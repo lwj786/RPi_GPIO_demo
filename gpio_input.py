@@ -1,12 +1,15 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import RPi.GPIO as GPIO
 import time
 
-''' func: wait_for_trigger()
+build_in_trigger = \
+    ['rising', 'falling', 'both']
+
+''' func: trigger()
     if the status fit the expect status return True,
     else waitting ... (forever -_^) '''
-def wait_for_trigger(gpio, expect_status):
+def trigger(gpio, expect_status):
     STATUS = {'rising': GPIO.RISING, 'falling': GPIO.FALLING, 'both': GPIO.BOTH}
 
     for channel in gpio:
