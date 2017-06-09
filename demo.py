@@ -8,6 +8,8 @@ import threading
 import gpio_output as GO
 import gpio_input as GI
 
+global EI, EO
+
 ''' func: behave()
     '''
 def behave(scheme):
@@ -17,11 +19,10 @@ def behave(scheme):
     else:
         module = scheme['behavior']
         try:
-            exec('import ' + module + ' as EO')
-        except:
-            exit()
-        else:
+            EO = __import__(module)
             EO.behavior(scheme['out'], scheme['behavior_params'])
+        except:
+            return
 
 ''' func: action()
     wait for specific input to trigger behavior '''
@@ -33,19 +34,18 @@ def action(scheme):
     else:
         module = scheme['trigger']
         try:
-            exec('import ' + module + ' as EI')
-        except:
-            exit()
-        else:
+            EI = __import__(module)
             wait_for_trigger = EI.trigger
             arg = scheme['trigger_params']
+        except:
+            return
 
     if len(scheme['in']) != 0:
         while True:
             if wait_for_trigger(scheme['in'], arg):
                 behave(scheme)
     else:
-        behavior(scheme)
+        behave(scheme)
 
 ''' func: comfirm()
     comfirm query '''
@@ -143,7 +143,7 @@ def get_scheme(scheme_msg):
         except:
             scheme['trigger'] = 'rising'
         try:
-            scheme['trigger_params'] = msg[0].split('=')[1].split('/')[1].split(',')
+            scheme['trigger_params'] = msg[1].split('=')[1].split('/')[1].split(',')
         except:
             scheme['trigger_params'] = []
 
