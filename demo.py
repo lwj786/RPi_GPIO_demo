@@ -7,6 +7,7 @@ import threading
 
 import gpio_output as GO
 import gpio_input as GI
+import stdio_manager as siom
 
 global EI, EO
 
@@ -215,9 +216,8 @@ if comfirm_setting == "disable" or \
 else:
     exit()
 
-while True:
-    if input(">> ") == "exit":
-        break
+# standard I/O management for multi-process
+siom.main()
 
 # clean up
 GPIO.cleanup()
