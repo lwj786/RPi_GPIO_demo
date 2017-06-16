@@ -7,6 +7,7 @@ import time
 LOCK = threading.Lock()
 
 USER_NAME = []
+IDLE_USER = []
 
 INPUT_CONTENT = ""
 INPUT_STATUS = []    # 1 -- has updated
@@ -14,8 +15,8 @@ INPUT_STATUS = []    # 1 -- has updated
 OUTPUT_CONTENT = []    # element is [index, content]
 OUTPUT_STATUS = 0
 
-''' push_output(), pull_input(), register()
-    for other sub-thread
+''' push_output(), pull_input(), register(), unregister() is for other sub-thread
+    for input, it's necessary to use register() and good to use unregister()
     '''
 def push_output(output_content, index = -1):
     global OUTPUT_CONTENT, OUTPUT_STATUS
@@ -46,20 +47,36 @@ def pull_input(index):
     return input_content
 
 def register(name = ""):
-    global INPUT_STATUS, USER_NAME
+    global IDLE_USER, INPUT_STATUS, USER_NAME
 
     LOCK.acquire()
     try:
-        INPUT_STATUS.append(0)
-        index = len(INPUT_STATUS) - 1
+        if len(IDLE_USER):
+            index = IDLE_USER.pop()
+        else:
+            INPUT_STATUS.append(0)
+            index = len(INPUT_STATUS) - 1
 
         if name == "":
             name = str(index)
-        USER_NAME.append(name)
+
+        if index < len(USER_NAME):
+            USER_NAME[index] = name
+        else:
+            USER_NAME.append(name)
     finally:
         LOCK.release()
 
     return index
+
+def unregister(index):
+    global IDLE_USER
+
+    LOCK.acquire()
+    try:
+        IDLE_USER.append(index)
+    finally:
+        LOCK.release()
 
 ''' main(), output() for main thread
     '''
@@ -79,7 +96,10 @@ def main(prompt = ">> ", exit_flag = "exit"):
                     print("")
                     for output_content in OUTPUT_CONTENT:
                         if output_content[0] + 1:
-                            print(USER_NAME[output_content[0]] + ":")
+                            identity = str(output_content[0]) + "-" \
+                                + USER_NAME[output_content[0]] + ":"
+                            print(identity)
+
                         print(output_content[1])
 
                     print(prompt, end = "")
