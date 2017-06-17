@@ -28,6 +28,8 @@ def behave(scheme):
 ''' func: action()
     wait for specific input to trigger behavior '''
 def action(scheme):
+    need_gpio = 1
+
     if scheme['trigger'] in GI.build_in_trigger \
         or scheme['trigger'] == []:
         wait_for_trigger = GI.trigger
@@ -38,15 +40,16 @@ def action(scheme):
             EI = __import__(module)
             wait_for_trigger = EI.trigger
             arg = scheme['trigger_params']
+            need_gpio = EI.NEED_GPIO
         except:
             return
 
-    if len(scheme['in']) != 0:
+    if len(scheme['in']) == 0 and need_gpio:
+        behave(scheme)
+    else:
         while True:
             if wait_for_trigger(scheme['in'], arg):
                 behave(scheme)
-    else:
-        behave(scheme)
 
 ''' func: comfirm()
     comfirm query '''
