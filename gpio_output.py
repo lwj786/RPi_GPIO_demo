@@ -4,6 +4,9 @@ import RPi.GPIO as GPIO
 import time
 import random
 
+build_in_behavior = \
+    ['turn', 'flash', 'flow', 'loop_flow', 'twinkle']
+
 ''' func: waiting()
     if duration time <= 0, use random value '''
 def waiting(duration):
@@ -71,3 +74,50 @@ def twinkle(gpio_OUT, duration, total_times):
         total_times = total_times - 1
         if total_times == 0:
             break
+
+''' func: get_times()
+    '''
+def get_times(times_msg):
+    try:
+        times = int(times_msg)
+    except:
+        times = 10
+
+    return times
+
+''' func: get_duration()
+    '''
+def get_duration(duration_msg):
+    try:
+        duration = float(duration_msg)
+    except:
+        duration = 0.3
+
+    if duration == 0:
+        random.seed()
+        duration = random.randrange(1, 10, 1) / 10.0
+
+    return duration
+
+''' func: behavior()
+    '''
+def behavior(gpio_OUT, behavior, params):
+    try:
+        duration = get_duration(params[0])
+    except:
+        duration = 0.3
+    try:
+        times = get_times(params[1])
+    except:
+        times = 10
+
+    if behavior == "turn":
+        turn(gpio_OUT)
+    elif behavior == 'flash':
+        flash(gpio_OUT, duration)
+    elif behavior == "flow":
+        flow(gpio_OUT, duration)
+    elif behavior == "loop_flow":
+        loop_flow(gpio_OUT, duration, times)
+    elif behavior == "twinkle":
+        twinkle(gpio_OUT, duration, times)
