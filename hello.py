@@ -11,7 +11,7 @@ def hello(string):
 def main(string_list):
     hello(" ".join(string_list))
 
-def behavior(gpio_list, params_list):
+def action(gpio_list, _name, params_list):
     global print
 
     name = "hello"

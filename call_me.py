@@ -2,9 +2,9 @@
 
 import stdio_manager as siom
 
-NEED_GPIO = 0
+NEED_GPIO = False
 
-def trigger(gpio_list, params_list):
+def trigger(gpio_list, _name, params_list):
     name = "me"
 
     for parameter in params_list:

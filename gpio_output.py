@@ -4,7 +4,7 @@ import RPi.GPIO as GPIO
 import time
 import random
 
-build_in_behavior = \
+build_in_action = \
     ['turn', 'flash', 'flow', 'loop_flow', 'twinkle']
 
 ''' func: waiting()
@@ -99,9 +99,9 @@ def get_duration(duration_msg):
 
     return duration
 
-''' func: behavior()
+''' func: action()
     '''
-def behavior(gpio_OUT, behavior, params):
+def action(gpio_OUT, _name, params):
     try:
         duration = get_duration(params[0])
     except:
@@ -111,13 +111,13 @@ def behavior(gpio_OUT, behavior, params):
     except:
         times = 10
 
-    if behavior == "turn":
+    if _name == "turn":
         turn(gpio_OUT)
-    elif behavior == 'flash':
+    elif _name == 'flash':
         flash(gpio_OUT, duration)
-    elif behavior == "flow":
+    elif _name == "flow":
         flow(gpio_OUT, duration)
-    elif behavior == "loop_flow":
+    elif _name == "loop_flow":
         loop_flow(gpio_OUT, duration, times)
-    elif behavior == "twinkle":
+    elif _name == "twinkle":
         twinkle(gpio_OUT, duration, times)
