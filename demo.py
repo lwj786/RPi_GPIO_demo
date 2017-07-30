@@ -46,28 +46,30 @@ GENERAL_GPIO_BCM_CODE = \
 ''' func: behavior()
     wait for specific input to trigger action '''
 def behavior(scheme):
-    global GI, GO
-
     # setup trigger
     if not (scheme['trigger'] in GI.build_in_trigger \
         or scheme['trigger'] == []):
         try:
-            GI = __import__(scheme['trigger'])
+            GI_enable = __import__(scheme['trigger'])
         except:
             return
+    else:
+        GI_enable = GI
 
-    wait_for_trigger = GI.trigger
-    need_gpio = GI.NEED_GPIO
+    wait_for_trigger = GI_enable.trigger
+    need_gpio = GI_enable.NEED_GPIO
 
     # setup action
     if not (scheme['action'] in GO.build_in_action \
         or scheme['action'] == []):
         try:
-            GO = __import__(scheme['action'])
+            GO_enable = __import__(scheme['action'])
         except:
             return
+    else:
+        GO_enable = GO
 
-    act = GO.action
+    act = GO_enable.action
 
     if len(scheme['in']) == 0 and need_gpio:
         act(scheme['out'], scheme['action'], scheme['action_params'])
