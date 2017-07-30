@@ -1,8 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-import RPi.GPIO as GPIO
 import time
 import random
+
+import RPi.GPIO as GPIO
 
 build_in_action = \
     ['turn', 'flash', 'flow', 'loop_flow', 'twinkle']
@@ -16,48 +17,48 @@ def waiting(duration):
 
     time.sleep(duration)
 
-''' func: true()
-    output True to all gpio header '''
-def true2(gpio_OUT):
-    for gpio in gpio_OUT:
-        GPIO.output(gpio, True)
+''' func: true2()
+    output True to all channel '''
+def true2(channel_list):
+    for channel in channel_list:
+        GPIO.output(channel, True)
 
-''' func: false()
-    output True to all gpio header '''
-def false2(gpio_OUT):
-    for gpio in gpio_OUT:
-        GPIO.output(gpio, False)
+''' func: false2()
+    output True to all channel '''
+def false2(channel_list):
+    for channel in channel_list:
+        GPIO.output(channel, False)
 
 ''' func: flash()
-    output True and then False to all gpio header '''
-def flash(gpio_OUT, duration):
-    true2(gpio_OUT)
+    output True and then False to all channel '''
+def flash(channel_list, duration):
+    true2(channel_list)
     waiting(duration)
-    false2(gpio_OUT)
+    false2(channel_list)
 
 ''' func: turn()
-    output True or False to all gpio header '''
-def turn(gpio_OUT):
-    for gpio in gpio_OUT:
-        if GPIO.input(gpio) == True:
-            GPIO.output(gpio, False)
+    output True or False to all channel '''
+def turn(channel_list):
+    for channel in channel_list:
+        if GPIO.input(channel) == True:
+            GPIO.output(channel, False)
         else:
-            GPIO.output(gpio, True)
+            GPIO.output(channel, True)
 
 ''' func: flow()
-    output True/False value one by one to gpio header (in list) '''
-def flow(gpio_OUT, duration):
-    for gpio in gpio_OUT:
-        GPIO.output(gpio, True)
+    output True/False value one by one to channel (in list)'''
+def flow(channel_list, duration):
+    for channel in channel_list:
+        GPIO.output(channel, True)
         waiting(duration)
-        GPIO.output(gpio, False)
+        GPIO.output(channel, False)
 
 ''' func: loop_flow()
     do a loop: flow()
     if total_times <= 0, can not stop '''
-def loop_flow(gpio_OUT, duration, total_times):
+def loop_flow(channel_list, duration, total_times):
     while True:
-        flow(gpio_OUT, duration)
+        flow(channel_list, duration)
 
         total_times = total_times - 1
         if total_times == 0:
@@ -66,9 +67,9 @@ def loop_flow(gpio_OUT, duration, total_times):
 ''' func: twinkle()
     do a loop: flash()
     if total_times <= 0, can not stop '''
-def twinkle(gpio_OUT, duration, total_times):
+def twinkle(channel_list, duration, total_times):
     while True:
-        flash(gpio_OUT, duration)
+        flash(channel_list, duration)
         waiting(duration)
 
         total_times = total_times - 1
@@ -101,23 +102,17 @@ def get_duration(duration_msg):
 
 ''' func: action()
     '''
-def action(gpio_OUT, _name, params):
-    try:
-        duration = get_duration(params[0])
-    except:
-        duration = 0.3
-    try:
-        times = get_times(params[1])
-    except:
-        times = 10
+def action(channel_list, _name, params):
+    duration = get_duration(params[0])
+    times = get_times(params[1])
 
     if _name == "turn":
-        turn(gpio_OUT)
+        turn(channel_list)
     elif _name == 'flash':
-        flash(gpio_OUT, duration)
+        flash(channel_list, duration)
     elif _name == "flow":
-        flow(gpio_OUT, duration)
+        flow(channel_list, duration)
     elif _name == "loop_flow":
-        loop_flow(gpio_OUT, duration, times)
+        loop_flow(channel_list, duration, times)
     elif _name == "twinkle":
-        twinkle(gpio_OUT, duration, times)
+        twinkle(channel_list, duration, times)

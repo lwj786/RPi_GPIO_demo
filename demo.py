@@ -6,8 +6,8 @@ import threading
 
 import RPi.GPIO as GPIO
 
-import gpio_input as GI
-import gpio_output as GO
+import build_in_input as GI
+import build_in_output as GO
 import stdio_manager as siom
 
 EXPLANATION = \
