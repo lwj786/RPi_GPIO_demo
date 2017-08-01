@@ -10,10 +10,10 @@ USER_NAME = []
 IDLE_USER = []
 
 INPUT_CONTENT = ""
-INPUT_STATUS = []    # 1 -- has updated
+INPUT_STATUS = []
 
 OUTPUT_CONTENT = []    # element is [index, content]
-OUTPUT_STATUS = 0
+OUTPUT_STATUS = False
 
 ''' push_output(), pull_input(), register(), unregister() is for other sub-thread
     for input, it's necessary to use register() and good to use unregister()
@@ -24,7 +24,7 @@ def push_output(output_content, index = -1):
     LOCK.acquire()
     try:
         OUTPUT_CONTENT.append([index, output_content])
-        OUTPUT_STATUS = 1
+        OUTPUT_STATUS = True
     finally:
         LOCK.release()
 
@@ -36,7 +36,7 @@ def pull_input(index):
             LOCK.acquire()
             try:
                 input_content = INPUT_CONTENT
-                INPUT_STATUS[index] = 0
+                INPUT_STATUS[index] = False
             finally:
                 LOCK.release()
 
@@ -54,7 +54,7 @@ def register(name = ""):
         if len(IDLE_USER):
             index = IDLE_USER.pop()
         else:
-            INPUT_STATUS.append(0)
+            INPUT_STATUS.append(False)
             index = len(INPUT_STATUS) - 1
 
         if name == "":
@@ -106,7 +106,7 @@ def main(prompt = ">> ", exit_flag = "exit"):
                     sys.stdout.flush()
 
                     del OUTPUT_CONTENT[:]
-                    OUTPUT_STATUS = 0
+                    OUTPUT_STATUS = False
                 finally:
                     LOCK.release()
             else:
@@ -127,7 +127,7 @@ def main(prompt = ">> ", exit_flag = "exit"):
                 INPUT_CONTENT = input_content
 
                 for i in range(len(INPUT_STATUS)):
-                    INPUT_STATUS[i] = 1
+                    INPUT_STATUS[i] = True
             finally:
                 LOCK.release()
 
@@ -136,5 +136,7 @@ def main(prompt = ">> ", exit_flag = "exit"):
     else:
         return
 
+''' begin
+    '''
 if __name__ == "__main__":
     main()

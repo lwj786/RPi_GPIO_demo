@@ -1,60 +1,87 @@
 #!/usr/bin/env python3
 
-import RPi.GPIO as GPIO
 import sys
 import random
 import threading
 
-import gpio_output as GO
-import gpio_input as GI
+import RPi.GPIO as GPIO
+
+import build_in_input as GI
+import build_in_output as GO
 import stdio_manager as siom
 
-global EI, EO
+EXPLANATION = \
+'''-h, --help
+-y disable the comfirm query
+--add-path=/path/to/file add path to sys.path
+--scheme-... a scheme is a config to set GPIO and it's function,
+\tis a description to behavior which consists of trigger and action
+\tformat: channel=param_list@trigger:channel=param_list@action
+\t-firt part (before ':'), sets gpio for input
+\t * channel -- gpio code(BCM), like 21
+\t * param_list -- like arg0,arg1,arg2
+\t     for build-in trigger, there is no parameter
+\t * trigger -- define the trigger condition
+\t     build-in trigger: use edge detection, 1) rising 2) falling 3) both
+\t     default 1)
+\t-second part, sets gpio for output
+\t * channel -- see ibid
+\t * param_list -- see ibid
+\t     for build-in behavior, the parameters is duration and/or times
+\t     # duration -- sets the duration of single output, default value: 0.3
+\t         define <=0 as random duration(while <0 it's real-time duration), random range (0:0.1:1)
+\t     # times -- sets the times(not time) of repeating output behavior(work for repetitive mode), default value: 10
+\t * action -- implement i) the output state and it's change of header
+\t      or ii) the relationship of different headers' states and their change
+\t     built-in action:
+\t     1) flash: output True and then False; 2) twinkle: loop the flash (if times <= 0, won't stop);
+\t     3) flow: flash the header one by one; 4) loop_flow: loop the flow (if times <= 0, won't stop);
+\t     5) turn: if True then False, or opposite
+\t     default 1)
+\texample: --scheme-21=@rising:23,24,25=0.3,10@twinkle or just --scheme-21=:23,24,25=twinkle'''
 
-''' func: behave()
-    '''
-def behave(scheme):
-    if scheme['behavior'] in GO.build_in_behavior \
-        or scheme['behavior'] == []:
-        GO.behavior(scheme['out'], scheme['behavior'], scheme['behavior_params'])
-    else:
-        module = scheme['behavior']
+GENERAL_GPIO_BCM_CODE = \
+    [4, 17, 18, 27, 22, 23, 24, 25, 5, 6, 12, 13, 19, 16, 26, 20, 21]
+
+''' func: behavior()
+    wait for specific input to trigger action '''
+def behavior(scheme):
+    # setup trigger
+    if not (scheme['trigger'] in GI.build_in_trigger \
+        or scheme['trigger'] == []):
         try:
-            EO = __import__(module)
-            EO.behavior(scheme['out'], scheme['behavior_params'])
+            GI_enable = __import__(scheme['trigger'])
         except:
             return
-
-''' func: action()
-    wait for specific input to trigger behavior '''
-def action(scheme):
-    need_gpio = 1
-
-    if scheme['trigger'] in GI.build_in_trigger \
-        or scheme['trigger'] == []:
-        wait_for_trigger = GI.trigger
-        arg = scheme['trigger']
     else:
-        module = scheme['trigger']
+        GI_enable = GI
+
+    wait_for_trigger = GI_enable.trigger
+    need_gpio = GI_enable.NEED_GPIO
+
+    # setup action
+    if not (scheme['action'] in GO.build_in_action \
+        or scheme['action'] == []):
         try:
-            EI = __import__(module)
-            wait_for_trigger = EI.trigger
-            arg = scheme['trigger_params']
-            need_gpio = EI.NEED_GPIO
+            GO_enable = __import__(scheme['action'])
         except:
             return
+    else:
+        GO_enable = GO
+
+    act = GO_enable.action
 
     if len(scheme['in']) == 0 and need_gpio:
-        behave(scheme)
+        act(scheme['out'], scheme['action'], scheme['action_params'])
     else:
         while True:
-            if wait_for_trigger(scheme['in'], arg):
-                behave(scheme)
+            if wait_for_trigger(scheme['in'], scheme['trigger'], scheme['trigger_params']):
+                act(scheme['out'], scheme['action'], scheme['action_params'])
 
 ''' func: comfirm()
-    comfirm query '''
-def comfirm(hint, ToF):
-    if input(hint) == ToF:
+    '''
+def comfirm(hint, yes):
+    if input(hint) == yes:
         return True
 
     return False
@@ -68,119 +95,98 @@ def print_scheme_message(scheme_list):
         print("* scheme " + str(count))
         count = count + 1
 
-        print("    ouput: "+ str(len(scheme['out'])))
-        print("    ", end = "")
-        print(scheme['out'])
-        print("    output behavior: " + scheme['behavior'])
-        print("    behavior parameter: ")
-        print("    ", end = "")
-        print(scheme['behavior_params'])
         print("    input: "+ str(len(scheme['in'])))
         print("    ", end = "")
         print(scheme['in'])
+
         print("    trigger condition: " + scheme['trigger'])
+
         print("    trigger parameter: ")
         print("    ", end = "")
         print(scheme['trigger_params'])
+
+        print("    ouput: "+ str(len(scheme['out'])))
+        print("    ", end = "")
+        print(scheme['out'])
+
+        print("    output action: " + scheme['action'])
+        print("    action parameter: ")
+        print("    ", end = "")
+        print(scheme['action_params'])
 
 ''' func: gpio_setup()
     '''
 def gpio_setup(scheme_list):
     for scheme in scheme_list:
-        GPIO.setup(scheme['out'], GPIO.OUT)
         GPIO.setup(scheme['in'], GPIO.IN)
+        GPIO.setup(scheme['out'], GPIO.OUT)
 
-''' func: check_gpio
-    check the validity of gpio which might be used '''
-def check_gpio(gpio_code):
-    GENERAL_GPIO_BCM_CODE = \
-        [4, 17, 18, 27, 22, 23, 24, 25, 5, 6, 12, 13, 19, 16, 26, 20, 21]
-
+''' func: check_channel
+    check the validity of channel code '''
+def check_channel(channel_code):
     for code in GENERAL_GPIO_BCM_CODE:
-        if gpio_code == str(code):
+        if channel_code == str(code):
             return True
 
     return False
 
-''' func: get_gpio()
-    get gpio in use '''
-def get_gpio(gpio_msg_list):
-    gpio_list = []
+''' func: get_channel_list()
+    '''
+def get_channel_list(channel_msg):
+    channel_list = []
 
-    for gpio in gpio_msg_list:
-        if  check_gpio(gpio):
-            gpio_list.append(int(gpio))
+    for channel in channel_msg:
+        if  check_channel(channel):
+            channel_list.append(int(channel))
 
-    return gpio_list
+    return channel_list
 
 ''' func: get_scheme()
-    get scheme from scheme_msg '''
+    '''
 def get_scheme(scheme_msg):
     scheme_list = []
 
     for msg in scheme_msg:
         scheme = {
-            'out': [], 'behavior': 'flash', 'behivior_params': [],
-            'in': [], 'trigger': 'rising', 'trigger_params': []
+            'in': [], 'trigger': '', 'trigger_params': [],
+            'out': [], 'action': '', 'behivior_params': []
         }
 
         msg = msg.split(':')
         try:
-            scheme['out'] = get_gpio(msg[0].split('=')[0].split(','))
-        except:
-            scheme['out'] = []
-        try:
-            scheme['behavior'] = msg[0].split('=')[1].split('/')[0]
-        except:
-            scheme['behavior'] = 'flash'
-        try:
-            scheme['behavior_params'] = msg[0].split('=')[1].split('/')[1].split(',')
-        except:
-            scheme['behavior_params'] = []
-
-        try:
-            scheme['in'] = get_gpio(msg[1].split('=')[0].split(','))
+            scheme['in'] = get_channel_list(msg[0].split('=')[0].split(','))
         except:
             scheme['in'] = []
         try:
-            scheme['trigger'] = msg[1].split('=')[1].split('/')[0]
-        except:
-            scheme['trigger'] = 'rising'
-        try:
-            scheme['trigger_params'] = msg[1].split('=')[1].split('/')[1].split(',')
+            scheme['trigger_params'] = msg[0].split('=')[1].split('@')[0].split(',')
         except:
             scheme['trigger_params'] = []
+        try:
+            scheme['trigger'] = msg[0].split('=')[1].split('@')[1]
+        except:
+            scheme['trigger'] = 'rising'
+
+        try:
+            scheme['out'] = get_channel_list(msg[1].split('=')[0].split(','))
+        except:
+            scheme['out'] = []
+        try:
+            scheme['action_params'] = msg[1].split('=')[1].split('@')[0].split(',')
+        except:
+            scheme['action_params'] = []
+        try:
+            scheme['action'] = msg[1].split('=')[1].split('@')[1]
+        except:
+            scheme['action'] = 'flash'
 
         scheme_list.append(scheme)
 
     return scheme_list
 
-''' func: help()
+''' func: explain()
     '''
-def help():
-    help_content = '''-h, --help
--y disable the comfirm query
---scheme-... a scheme is a config to set GPIO and it's function
-\tformat: gpio_code=behavior_mode/param_list:gpio_code=trigger_mode/param_list
-\t-firt part (before ':'), sets gpio for output
-\t * gpio_code -- like 23,24,25
-\t * build-in behavior mode: i) the output behavior of single header or ii) behavior(relationship) of all of headers
-\t     1) flash: output True and then False 2) turn: if True then False, or opposite
-\t     3) flow: flash the header one by one 4) loop_flow: loop the flow (if times <= 0, won't stop)
-\t     5) twinkle: loop the flash (if times <= 0, won't stop)
-\t * param_list -- like arg0,arg1,arg2
-\t     for build-in behavior, the parameters is duration and/or times
-\t     # duration -- sets the duration of single output, default value: 0.3
-\t         define <=0 as random duration(while <0 it's real-time duration), random range (0:0.1:1)
-\t     # times -- sets the times(not time) of repeating output behavior(work for repetitive mode), default value: 10
-\t-second part, sets gpio for input
-\t * gpio_code -- same as above
-\t * build-in trigger_mode: use edge detection, if it fits the condition then trigger
-\t     1) rising  2) falling 3) both
-\t   for build-in trigger mode, there is no parameters
-\texample: 23,24,25=twinkle/0.1,30:21=rising'''
-
-    print(help_content)
+def explain():
+    print(EXPLANATION)
     exit()
 
 ''' begin
@@ -195,10 +201,15 @@ scheme_msg = []
 for arg in sys.argv:
     if arg[:len("--scheme-")] == "--scheme-":
         scheme_msg.append(arg[len("--scheme-"):])
+    elif arg[:len("--add-path=")] == "--add-path=":
+        sys.path.append(arg[len("--add-path="):])
     elif arg == "-y":
         comfirm_setting = "disable"
     elif arg == "-h" or arg == "--help":
-        help()
+        explain()
+
+if not len(scheme_msg):
+    explain()
 
 # get scheme and setup gpio
 scheme_list = get_scheme(scheme_msg)
@@ -210,13 +221,13 @@ print_scheme_message(scheme_list)
 # perform the operation
 if comfirm_setting == "disable" or \
     comfirm('***PLEASE CHECK IT !!! [Y/n]*** :', 'Y') == True:
-    print("...")
 
     for scheme in scheme_list:
-        t = threading.Thread(target = action, args = (scheme, ))
+        t = threading.Thread(target = behavior, args = (scheme, ))
         t.setDaemon(True)
         t.start()
 else:
+    GPIO.cleanup()
     exit()
 
 # standard I/O management for multi-process

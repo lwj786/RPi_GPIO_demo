@@ -11,12 +11,14 @@ def hello(string):
 def main(string_list):
     hello(" ".join(string_list))
 
-def behavior(gpio_list, params_list):
+''' func: action()
+    interface for demo.py, output: standard output '''
+def action(channel_list, _name, params):
     global print
 
     name = "hello"
     content_list = []
-    for parameter in params_list:
+    for parameter in params:
         if parameter[:7] == "--name-":
             name = parameter[7:]
         else:
@@ -35,6 +37,8 @@ def behavior(gpio_list, params_list):
 
     siom.unregister(index)
 
+''' begin
+    '''
 if __name__ == "__main__":
     from sys import argv
 
