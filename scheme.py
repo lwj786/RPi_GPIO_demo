@@ -14,9 +14,9 @@ EXPLANATION = \
 '''-h, --help
 -y disable the comfirm query
 --add-path=/path/to/file add path to sys.path
---scheme-... a scheme is a config to set GPIO and it's function,
+other parameters will be treated as scheme, a scheme is a config to set GPIO and it's function,
 \tis a description to behavior which consists of trigger and action
-\tformat: channel=param_list@trigger:channel=param_list@action
+\tformat: channel~param_list@trigger:channel~param_list@action
 \t-firt part (before ':'), sets gpio for input
 \t * channel -- gpio code(BCM), like 21
 \t * param_list -- like arg0,arg1,arg2
@@ -38,7 +38,7 @@ EXPLANATION = \
 \t     3) flow: flash the header one by one; 4) loop_flow: loop the flow (if times <= 0, won't stop);
 \t     5) turn: if True then False, or opposite
 \t     default 1)
-\texample: --scheme-21=@rising:23,24,25=0.3,10@twinkle or just --scheme-21=:23,24,25=twinkle'''
+\texample: 21~@rising:23,24,25~0.3,10@twinkle or just 21~:23,24,25~twinkle'''
 
 GENERAL_GPIO_BCM_CODE = \
     [4, 17, 18, 27, 22, 23, 24, 25, 5, 6, 12, 13, 19, 16, 26, 20, 21]
@@ -47,29 +47,27 @@ GENERAL_GPIO_BCM_CODE = \
     wait for specific input to trigger action '''
 def behavior(scheme):
     # setup trigger
-    if not (scheme['trigger'] in GI.build_in_trigger \
-        or scheme['trigger'] == []):
+    if scheme['trigger'] not in GI.build_in_trigger:
         try:
-            GI_enable = __import__(scheme['trigger'])
+            TRIGGER = __import__(scheme['trigger'])
         except:
             return
     else:
-        GI_enable = GI
+        TRIGGER = GI
 
-    wait_for_trigger = GI_enable.trigger
-    need_gpio = GI_enable.NEED_GPIO
+    wait_for_trigger = TRIGGER.trigger
+    need_gpio = TRIGGER.NEED_GPIO
 
     # setup action
-    if not (scheme['action'] in GO.build_in_action \
-        or scheme['action'] == []):
+    if scheme['action'] not in GO.build_in_action:
         try:
-            GO_enable = __import__(scheme['action'])
+            ACTION = __import__(scheme['action'])
         except:
             return
     else:
-        GO_enable = GO
+        ACTION = GO
 
-    act = GO_enable.action
+    act = ACTION.action
 
     if len(scheme['in']) == 0 and need_gpio:
         act(scheme['out'], scheme['action'], scheme['action_params'])
@@ -89,29 +87,25 @@ def comfirm(hint, yes):
 ''' func: print_scheme_message()
     '''
 def print_scheme_message(scheme_list):
-    count = 1
+    for i, scheme in enumerate(scheme_list):
+        print(' '.join(["* scheme", str(i + 1)]))
 
-    for scheme in scheme_list:
-        print("* scheme " + str(count))
-        count = count + 1
-
-        print("    input: "+ str(len(scheme['in'])))
-        print("    ", end = "")
+        print(' '.join(["\tinput:", str(len(scheme['in']))]))
+        print('\t', end = '')
         print(scheme['in'])
 
-        print("    trigger condition: " + scheme['trigger'])
-
-        print("    trigger parameter: ")
-        print("    ", end = "")
+        print(' '.join(["\ttrigger condition:", scheme['trigger']]))
+        print("\ttrigger parameter: ")
+        print('\t', end = '')
         print(scheme['trigger_params'])
 
-        print("    ouput: "+ str(len(scheme['out'])))
-        print("    ", end = "")
+        print(' '.join(["\toutput:", str(len(scheme['out']))]))
+        print("\t", end = '')
         print(scheme['out'])
 
-        print("    output action: " + scheme['action'])
-        print("    action parameter: ")
-        print("    ", end = "")
+        print(' '.join(["\toutput action:", scheme['action']]))
+        print("\taction parameter: ")
+        print('\t', end = '')
         print(scheme['action_params'])
 
 ''' func: gpio_setup()
@@ -153,33 +147,41 @@ def get_scheme(scheme_msg):
         }
 
         msg = msg.split(':')
+
         try:
-            scheme['in'] = get_channel_list(msg[0].split('=')[0].split(','))
+            scheme['in'] = get_channel_list(msg[0].split('~')[0].split(','))
         except:
             scheme['in'] = []
         try:
-            scheme['trigger_params'] = msg[0].split('=')[1].split('@')[0].split(',')
+            scheme['trigger_params'] = msg[0].split('~')[1].split('@')[0].split(',')
         except:
             scheme['trigger_params'] = []
         try:
-            scheme['trigger'] = msg[0].split('=')[1].split('@')[1]
+            scheme['trigger'] = msg[0].split('~')[1].split('@')[1]
         except:
+            scheme['trigger'] = ''
+
+        if len(scheme['in']) and not len(scheme['trigger']):
             scheme['trigger'] = 'rising'
 
         try:
-            scheme['out'] = get_channel_list(msg[1].split('=')[0].split(','))
+            scheme['out'] = get_channel_list(msg[1].split('~')[0].split(','))
         except:
             scheme['out'] = []
         try:
-            scheme['action_params'] = msg[1].split('=')[1].split('@')[0].split(',')
+            scheme['action_params'] = msg[1].split('~')[1].split('@')[0].split(',')
         except:
             scheme['action_params'] = []
         try:
-            scheme['action'] = msg[1].split('=')[1].split('@')[1]
+            scheme['action'] = msg[1].split('~')[1].split('@')[1]
         except:
+            scheme['action'] = ''
+
+        if len(scheme['out']) and not len(scheme['action']):
             scheme['action'] = 'flash'
 
-        scheme_list.append(scheme)
+        if len(scheme['trigger']) and len(scheme['action']):
+            scheme_list.append(scheme)
 
     return scheme_list
 
@@ -198,15 +200,17 @@ GPIO.setmode(GPIO.BCM)
 # process argv
 comfirm_setting = "enable"
 scheme_msg = []
+
+sys.argv.pop(0)
 for arg in sys.argv:
-    if arg[:len("--scheme-")] == "--scheme-":
-        scheme_msg.append(arg[len("--scheme-"):])
-    elif arg[:len("--add-path=")] == "--add-path=":
+    if arg[:len("--add-path=")] == "--add-path=":
         sys.path.append(arg[len("--add-path="):])
     elif arg == "-y":
         comfirm_setting = "disable"
     elif arg == "-h" or arg == "--help":
         explain()
+    else:
+        scheme_msg.append(arg)
 
 if not len(scheme_msg):
     explain()
