@@ -2,7 +2,7 @@
 
 import stdio_manager as siom
 
-NEED_GPIO = False
+NO_NEED_GPIO = True
 
 ''' func: trigger()
     interface for demo.py, trigger condition: standard input '''

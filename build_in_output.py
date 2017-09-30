@@ -9,72 +9,51 @@ build_in_action = \
     ['turn', 'flash', 'flow', 'loop_flow', 'twinkle']
 
 ''' func: waiting()
-    if duration time <= 0, use random value '''
+    '''
 def waiting(duration):
-    if duration <= 0:
-        random.seed()
-        duration = random.randrange(1, 10, 1) / 10.0
-
     time.sleep(duration)
-
-''' func: true2()
-    output True to all channel '''
-def true2(channel_list):
-    for channel in channel_list:
-        GPIO.output(channel, True)
-
-''' func: false2()
-    output True to all channel '''
-def false2(channel_list):
-    for channel in channel_list:
-        GPIO.output(channel, False)
 
 ''' func: flash()
     output True and then False to all channel '''
 def flash(channel_list, duration):
-    true2(channel_list)
+    GPIO.output(channel_list, GPIO.HIGH)
     waiting(duration)
-    false2(channel_list)
+    GPIO.output(channel_list, GPIO.LOW)
 
 ''' func: turn()
-    output True or False to all channel '''
+    turn True/False to all channel '''
 def turn(channel_list):
+    channel_low, channel_high = [], []
+
     for channel in channel_list:
-        if GPIO.input(channel) == True:
-            GPIO.output(channel, False)
+        if GPIO.input(channel) == GPIO.LOW:
+            channel_low.append(channel)
         else:
-            GPIO.output(channel, True)
+            channel_high.append(channel)
+
+    GPIO.output(channel_low, GPIO.HIGH)
+    GPIO.output(channel_high, GPIO.LOW)
 
 ''' func: flow()
     output True/False value one by one to channel (in list)'''
 def flow(channel_list, duration):
     for channel in channel_list:
-        GPIO.output(channel, True)
+        GPIO.output(channel, GPIO.HIGH)
         waiting(duration)
-        GPIO.output(channel, False)
+        GPIO.output(channel, GPIO.LOW)
 
 ''' func: loop_flow()
-    do a loop: flow()
-    if total_times <= 0, can not stop '''
+    do a loop: flow() '''
 def loop_flow(channel_list, duration, total_times):
-    while True:
+    for i in range(total_times):
         flow(channel_list, duration)
 
-        total_times = total_times - 1
-        if total_times == 0:
-            break
-
 ''' func: twinkle()
-    do a loop: flash()
-    if total_times <= 0, can not stop '''
+    do a loop: flash() '''
 def twinkle(channel_list, duration, total_times):
-    while True:
+    for i in range(total_times):
         flash(channel_list, duration)
         waiting(duration)
-
-        total_times = total_times - 1
-        if total_times == 0:
-            break
 
 ''' func: get_times()
     '''
@@ -103,6 +82,9 @@ def get_duration(duration_msg):
 ''' func: action()
     '''
 def action(channel_list, _name, params):
+    if len(params) < 2:
+        params.extend([0.3, 10][(len(params) - 2):])
+
     duration = get_duration(params[0])
     times = get_times(params[1])
 

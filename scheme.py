@@ -29,13 +29,13 @@ other parameters will be treated as scheme, a scheme is a config to set GPIO and
 \t * param_list -- see ibid
 \t     for build-in behavior, the parameters is duration and/or times
 \t     # duration -- sets the duration of single output, default value: 0.3
-\t         define <=0 as random duration(while <0 it's real-time duration), random range (0:0.1:1)
+\t         define =0 as random duration, random range (0:0.1:1)
 \t     # times -- sets the times(not time) of repeating output behavior(work for repetitive mode), default value: 10
 \t * action -- implement i) the output state and it's change of header
 \t      or ii) the relationship of different headers' states and their change
 \t     built-in action:
-\t     1) flash: output True and then False; 2) twinkle: loop the flash (if times <= 0, won't stop);
-\t     3) flow: flash the header one by one; 4) loop_flow: loop the flow (if times <= 0, won't stop);
+\t     1) flash: output True and then False; 2) twinkle: loop the flash;
+\t     3) flow: flash the header one by one; 4) loop_flow: loop the flow;
 \t     5) turn: if True then False, or opposite
 \t     default 1)
 \texample: 21~@rising:23,24,25~0.3,10@twinkle or just 21~:23,24,25~twinkle'''
@@ -56,7 +56,7 @@ def behavior(scheme):
         TRIGGER = GI
 
     wait_for_trigger = TRIGGER.trigger
-    need_gpio = TRIGGER.NEED_GPIO
+    need_gpio = not hasattr(TRIGGER, "NO_NEED_GPIO")
 
     # setup action
     if scheme['action'] not in GO.build_in_action:
