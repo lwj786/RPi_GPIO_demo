@@ -7,11 +7,11 @@ NO_NEED_GPIO = True
 ''' func: trigger()
     interface for demo.py, trigger condition: standard input '''
 def trigger(channel_list, _name, params):
-    name = "me"
+    if len(params):
+        name = ' '.join(params)
 
-    for parameter in params:
-        if parameter[:7] == "--name-":
-            name = parameter[7:]
+    if not len(name):
+        name = _name[-2:]
 
     index = siom.register(name)
 
