@@ -16,7 +16,7 @@ EXPLANATION = \
 --add-path=/path/to/file add path to sys.path
 other parameters will be treated as scheme, a scheme is a config to set GPIO and it's function,
 \tis a description to behavior which consists of trigger and action
-\tformat: channel~param_list@trigger:channel~param_list@action
+\tformat: channel^param_list@trigger:channel^param_list@action
 \t-firt part (before ':'), sets gpio for input
 \t * channel -- gpio code(BCM), like 21
 \t * param_list -- like arg0,arg1,arg2
@@ -38,7 +38,7 @@ other parameters will be treated as scheme, a scheme is a config to set GPIO and
 \t     3) flow: flash the header one by one; 4) loop_flow: loop the flow;
 \t     5) turn: if True then False, or opposite
 \t     default 1)
-\texample: 21~@rising:23,24,25~0.3,10@twinkle or just 21~:23,24,25~twinkle'''
+\texample: 21^@rising:23,24,25^0.3,10@twinkle or just 21^:23,24,25^twinkle'''
 
 GENERAL_GPIO_BCM_CODE = \
     [4, 17, 18, 27, 22, 23, 24, 25, 5, 6, 12, 13, 19, 16, 26, 20, 21]
@@ -149,15 +149,15 @@ def get_scheme(scheme_msg):
         msg = msg.split(':')
 
         try:
-            scheme['in'] = get_channel_list(msg[0].split('~')[0].split(','))
+            scheme['in'] = get_channel_list(msg[0].split('^')[0].split(','))
         except:
             scheme['in'] = []
         try:
-            scheme['trigger_params'] = msg[0].split('~')[1].split('@')[0].split(',')
+            scheme['trigger_params'] = msg[0].split('^')[1].split('@')[0].split(',')
         except:
             scheme['trigger_params'] = []
         try:
-            scheme['trigger'] = msg[0].split('~')[1].split('@')[1]
+            scheme['trigger'] = msg[0].split('^')[1].split('@')[1]
         except:
             scheme['trigger'] = ''
 
@@ -165,15 +165,15 @@ def get_scheme(scheme_msg):
             scheme['trigger'] = 'rising'
 
         try:
-            scheme['out'] = get_channel_list(msg[1].split('~')[0].split(','))
+            scheme['out'] = get_channel_list(msg[1].split('^')[0].split(','))
         except:
             scheme['out'] = []
         try:
-            scheme['action_params'] = msg[1].split('~')[1].split('@')[0].split(',')
+            scheme['action_params'] = msg[1].split('^')[1].split('@')[0].split(',')
         except:
             scheme['action_params'] = []
         try:
-            scheme['action'] = msg[1].split('~')[1].split('@')[1]
+            scheme['action'] = msg[1].split('^')[1].split('@')[1]
         except:
             scheme['action'] = ''
 
