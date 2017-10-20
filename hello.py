@@ -3,7 +3,7 @@
 import stdio_manager as siom
 
 def hello(string):
-    if len(string):
+    if not len(string):
         string = "World"
 
     print(' '.join(["Hello", string, "!"]))
