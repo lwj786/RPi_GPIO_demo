@@ -6,37 +6,34 @@ import time
 
 LOCK = threading.Lock()
 
-USER_NAME = []
-IDLE_USER = []
-
-INPUT_CONTENT = ""
-INPUT_STATUS = []
-
-OUTPUT_CONTENT = []    # element is [index, content]
-OUTPUT_STATUS = False
+USER = {'name': [], 'idle_index': []}
+IO = {
+    'input': "", 'input_status': [],
+    'output': [], 'output_status': False # outout's element is [index, content]
+}
 
 ''' push_output(), pull_input(), register(), unregister() is for other sub-thread
     for input, it's necessary to use register() and good to use unregister()
     '''
 def push_output(output_content, index = -1):
-    global OUTPUT_CONTENT, OUTPUT_STATUS
+    global IO
 
     LOCK.acquire()
     try:
-        OUTPUT_CONTENT.append([index, output_content])
-        OUTPUT_STATUS = True
+        IO['output'].append([index, output_content])
+        IO['output_status'] = True
     finally:
         LOCK.release()
 
 def pull_input(index):
-    global INPUT_STATUS, INPUT_CONTENT
+    global IO
 
     while True:
-        if INPUT_STATUS[index]:
+        if IO['input_status'][index]:
             LOCK.acquire()
             try:
-                input_content = INPUT_CONTENT
-                INPUT_STATUS[index] = False
+                input_content = IO['input']
+                IO['input_status'][index] = False
             finally:
                 LOCK.release()
 
@@ -47,66 +44,65 @@ def pull_input(index):
     return input_content
 
 def register(name = ""):
-    global IDLE_USER, INPUT_STATUS, USER_NAME
+    global USER, IO
 
     LOCK.acquire()
     try:
-        if len(IDLE_USER):
-            index = IDLE_USER.pop()
+        if len(USER['idle_index']):
+            index = USER['idle_index'].pop()
         else:
-            INPUT_STATUS.append(False)
-            index = len(INPUT_STATUS) - 1
+            IO['input_status'].append(False)
+            index = len(IO['input_status']) - 1
 
-        if name == "":
+        if not len(name):
             name = str(index)
 
-        if index < len(USER_NAME):
-            USER_NAME[index] = name
+        if index < len(USER['name']):
+            USER['name'][index] = name
         else:
-            USER_NAME.append(name)
+            USER['name'].append(name)
     finally:
         LOCK.release()
 
     return index
 
 def unregister(index):
-    global IDLE_USER
+    global USER
 
     LOCK.acquire()
     try:
-        IDLE_USER.append(index)
+        USER['idle_index'].append(index)
     finally:
         LOCK.release()
 
 ''' main(), output() for main thread
     '''
 def main(prompt = ">> ", exit_flag = "exit"):
-    global INPUT_CONTENT, INPUT_STATUS
+    global IO
 
     print(exit_flag.join(["input ", " to exit !"]))
 
     # put output() to daemon
     def output(prompt):
-        global OUTPUT_STATUS, OUTPUT_CONTENT, USER_NAME
+        global USER, IO
 
         while True:
-            if OUTPUT_STATUS:
+            if IO['output_status']:
                 LOCK.acquire()
                 try:
                     print("")
-                    for output_content in OUTPUT_CONTENT:
-                        if output_content[0] + 1:
-                            identity = str(output_content[0]) + "-" \
-                                + USER_NAME[output_content[0]] + ":"
+                    for [index, content] in IO['output']:
+                        if index + 1:
+                            identity = ''.join([str(index), "-", USER['name'][index], ":"])
                             print(identity)
 
-                        print(output_content[1])
+                        print(content)
 
                     print(prompt, end = "")
                     sys.stdout.flush()
 
-                    del OUTPUT_CONTENT[:]
-                    OUTPUT_STATUS = False
+                    del IO['output'][:]
+                    IO['output_status'] = False
                 finally:
                     LOCK.release()
             else:
@@ -124,10 +120,8 @@ def main(prompt = ">> ", exit_flag = "exit"):
         else:
             LOCK.acquire()
             try:
-                INPUT_CONTENT = input_content
-
-                for i in range(len(INPUT_STATUS)):
-                    INPUT_STATUS[i] = True
+                IO['input'] = input_content
+                IO['input_status'] = [True for i in IO['input_status']]
             finally:
                 LOCK.release()
 
